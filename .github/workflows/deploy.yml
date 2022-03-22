@@ -35,6 +35,12 @@ jobs:
       run: |
           envsubst < terraform/main.tf > tempsecret
           cat tempsecret > terraform/main.tf
+          envsubst < terraform/cluster.tf > tempsecret
+          cat tempsecret > terraform/cluster.tf
+          envsubst < terraform/services.tf > tempsecret
+          cat tempsecret > terraform/services.tf
+          envsubst < terraform/tasks.tf > tempsecret
+          cat tempsecret > terraform/tasks.tf
           rm tempsecret
 
     - name: Terraform Init
