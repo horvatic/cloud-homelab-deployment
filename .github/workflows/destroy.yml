@@ -47,6 +47,16 @@ jobs:
           cd terraform
           terraform init
 
+    - name: Terraform Remove Permanent Resources From State
+      env:
+        TF_ACTION_WORKING_DIR: 'terraform'
+        AWS_ACCESS_KEY_ID:  ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY:  ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      run: |
+          cd terraform
+          cp terraform.tfstate tempstate
+          terraform state rm aws_ecs_task_definition.task
+
     - name: Terraform Destroy
       env:
         TF_ACTION_WORKING_DIR: 'terraform'
@@ -55,6 +65,17 @@ jobs:
       run: |
           cd terraform
           terraform destroy -auto-approve
+
+    - name: Terraform Add Permanent Resources To State
+      env:
+        TF_ACTION_WORKING_DIR: 'terraform'
+        AWS_ACCESS_KEY_ID:  ${{ secrets.AWS_ACCESS_KEY_ID }}
+        AWS_SECRET_ACCESS_KEY:  ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      run: |
+          cd terraform
+          export IMPORTSERVICE="$(cat tempstate | grep -o "arn:aws:ecs:.*:task-definition/service:.*" | head -1 | sed 's/",//g')"
+          terraform import aws_ecs_task_definition.task "${IMPORTSERVICE}"
+          rm -f tempstate
 
     - name: Publish State
       run: |
