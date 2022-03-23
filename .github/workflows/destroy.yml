@@ -22,9 +22,11 @@ jobs:
         aws-region: ${{ secrets.AWS_REGION }}
 
     - name: Get State
+      env:
+        S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
       run: |
         cd terraform
-        aws s3 sync s3://horvatic-bucket .
+        aws s3 sync "${S3_BUCKET}" . &>/dev/null
 
     - name: Save Secrets
       env: 
@@ -61,7 +63,7 @@ jobs:
           if aws apigatewayv2 get-apis | grep -q "$SERVICE_NAME"; then
             APIS=$(aws apigatewayv2 get-apis)
             APIID=$(echo $APIS | jq -r --arg SERVICE_NAME "$SERVICE_NAME" '.Items[] | select((.Name|tostring) == $SERVICE_NAME).ApiId')
-            aws apigatewayv2 delete-api --api-id "${APIID}"
+            aws apigatewayv2 delete-api --api-id "${APIID}" &>/dev/null
           fi
         done
 
@@ -91,7 +93,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY:  ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
           cd terraform
-          terraform destroy -auto-approve
+          terraform destroy -auto-approve &>/dev/null
 
     - name: Terraform Add Permanent Resources To State
       env:
@@ -103,10 +105,12 @@ jobs:
           IMPORTSERVICES=$(cat tempstate | jq -r '.resources[] | select(.type=="aws_ecs_task_definition").instances[].attributes.arn')
           for IMPORTSERVICE in $IMPORTSERVICES
           do
-            terraform import aws_ecs_task_definition.task "${IMPORTSERVICE}"
+            terraform import aws_ecs_task_definition.task "${IMPORTSERVICE}" &>/dev/null
           done
           rm -f tempstate
 
     - name: Publish State
+      env:
+        S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
       run: |
-        aws s3 sync terraform s3://horvatic-bucket --exclude "*" --include "terraform.tfstate"
+        aws s3 sync terraform "${S3_BUCKET}" --exclude "*" --include "terraform.tfstate" &>/dev/null
