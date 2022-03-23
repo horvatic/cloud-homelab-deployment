@@ -50,22 +50,13 @@ jobs:
         AWS_ACCESS_KEY_ID:  ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY:  ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         CLUSTER_NAME: ${{ secrets.AWS_CLUSTER_NAME }}
+        APINAME: ${{ secrets.AWS_API_NAME }}
       run: |        
-        SERVICE_ARNS=$(aws ecs list-services --cluster "$CLUSTER_NAME"  --query 'serviceArns[0]' --output text)
-        SERVICE_NAMES=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_ARNS" | jq -r '.services[].serviceName')
-
-        for SERVICE_NAME in $SERVICE_NAMES
-        do
-          TASK_ARN=$(aws ecs list-tasks --cluster "$CLUSTER_NAME"  --service-name "$SERVICE_NAME" --query 'taskArns[0]' --output text)
-          TASK_DETAILS=$(aws ecs describe-tasks --cluster "$CLUSTER_NAME" --task "${TASK_ARN}" --query 'tasks[0].attachments[0].details')
-          ENI=$(echo $TASK_DETAILS | jq -r '.[] | select(.name=="networkInterfaceId").value')
-          IP=$(aws ec2 describe-network-interfaces --network-interface-ids "${ENI}" --query 'NetworkInterfaces[0].Association.PublicIp' --output text)
-          if aws apigatewayv2 get-apis | grep -q "$SERVICE_NAME"; then
-            APIS=$(aws apigatewayv2 get-apis)
-            APIID=$(echo $APIS | jq -r --arg SERVICE_NAME "$SERVICE_NAME" '.Items[] | select((.Name|tostring) == $SERVICE_NAME).ApiId')
-            aws apigatewayv2 delete-api --api-id "${APIID}" &>/dev/null
-          fi
-        done
+        GETAPI=$(aws apigatewayv2 get-apis)
+        if echo $GETAPI | grep -q "$APINAME"; then
+          APIID=$(echo $GETAPI | jq -r --arg APINAME "$APINAME" '.Items[] | select(.Name==$APINAME).ApiId')
+          aws apigatewayv2 delete-api --api-id "$APIID"
+        fi
 
     - name: Terraform Init
       env:

@@ -74,7 +74,19 @@ jobs:
         AWS_ACCESS_KEY_ID:  ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY:  ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         CLUSTER_NAME: ${{ secrets.AWS_CLUSTER_NAME }}
+        APINAME: ${{ secrets.AWS_API_NAME }}
       run: |
+        GETAPI=$(aws apigatewayv2 get-apis)
+        if !(echo $GETAPI | grep -q "$APINAME"); then
+          APIID=$(aws apigatewayv2 create-api --name "${APINAME}" --protocol-type HTTP | jq -r '.ApiId')
+          aws apigatewayv2 create-stage --api-id "${APIID}" --stage-name '$default' --auto-deploy &>/dev/null
+        else
+          APIID=$(echo $GETAPI | jq -r --arg APINAME "$APINAME" '.Items[] | select(.Name==$APINAME).ApiId')
+          aws apigatewayv2 delete-api --api-id "$APIID" &>/dev/null
+          APIID=$(aws apigatewayv2 create-api --name "${APINAME}" --protocol-type HTTP | jq -r '.ApiId')
+          aws apigatewayv2 create-stage --api-id "${APIID}" --stage-name '$default' --auto-deploy &>/dev/null
+        fi
+
         SERVICE_ARNS=$(aws ecs list-services --cluster "$CLUSTER_NAME"  --query 'serviceArns[0]' --output text)
         SERVICE_NAMES=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_ARNS" | jq -r '.services[].serviceName')
 
@@ -84,11 +96,7 @@ jobs:
           TASK_DETAILS=$(aws ecs describe-tasks --cluster "$CLUSTER_NAME" --task "${TASK_ARN}" --query 'tasks[0].attachments[0].details')
           ENI=$(echo $TASK_DETAILS | jq -r '.[] | select(.name=="networkInterfaceId").value')
           IP=$(aws ec2 describe-network-interfaces --network-interface-ids "${ENI}" --query 'NetworkInterfaces[0].Association.PublicIp' --output text)
-          if aws apigatewayv2 get-apis | grep -q "$SERVICE_NAME"; then
-            APIS=$(aws apigatewayv2 get-apis)
-            APIID=$(echo $APIS | jq -r --arg SERVICE_NAME "$SERVICE_NAME" '.Items[] | select((.Name|tostring) == $SERVICE_NAME).ApiId')
-            aws apigatewayv2 update-api --api-id "${APIID}" --name "${SERVICE_NAME}" --target "http://${IP}" &>/dev/null
-          else
-            aws apigatewayv2 create-api --name "${SERVICE_NAME}" --protocol-type HTTP --target "http://${IP}" &>/dev/null
-          fi
+
+          INTEGRATIONID=$(aws apigatewayv2 create-integration --api-id "${APIID}" --integration-type HTTP_PROXY --integration-uri "http://${IP}/{proxy}" --payload-format-version 1.0 --integration-method "ANY" | jq -r '.IntegrationId')
+          aws apigatewayv2 create-route --api-id "${APIID}" --route-key "ANY /${SERVICE_NAME}/{proxy+}" --target "integrations/${INTEGRATIONID}" &>/dev/null
         done
