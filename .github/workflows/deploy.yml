@@ -22,9 +22,11 @@ jobs:
         aws-region: ${{ secrets.AWS_REGION }}
 
     - name: Get State
+      env:
+        S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
       run: |
         cd terraform
-        aws s3 sync s3://horvatic-bucket .
+        aws s3 sync "${S3_BUCKET}" . &>/dev/null
 
     - name: Save Secrets
       env: 
@@ -59,11 +61,13 @@ jobs:
         AWS_SECRET_ACCESS_KEY:  ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
           cd terraform
-          terraform apply -auto-approve
+          terraform apply -auto-approve &>/dev/null
 
     - name: Publish State
+      env:
+        S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
       run: |
-        aws s3 sync terraform s3://horvatic-bucket --exclude "*" --include "terraform.tfstate"
+        aws s3 sync terraform "${S3_BUCKET}" --exclude "*" --include "terraform.tfstate" &>/dev/null
 
     - name: Update API Gateway
       env:
@@ -83,8 +87,8 @@ jobs:
           if aws apigatewayv2 get-apis | grep -q "$SERVICE_NAME"; then
             APIS=$(aws apigatewayv2 get-apis)
             APIID=$(echo $APIS | jq -r --arg SERVICE_NAME "$SERVICE_NAME" '.Items[] | select((.Name|tostring) == $SERVICE_NAME).ApiId')
-            aws apigatewayv2 update-api --api-id "${APIID}" --name "${SERVICE_NAME}" --target "http://${IP}"
+            aws apigatewayv2 update-api --api-id "${APIID}" --name "${SERVICE_NAME}" --target "http://${IP}" &>/dev/null
           else
-            aws apigatewayv2 create-api --name "${SERVICE_NAME}" --protocol-type HTTP --target "http://${IP}"
+            aws apigatewayv2 create-api --name "${SERVICE_NAME}" --protocol-type HTTP --target "http://${IP}" &>/dev/null
           fi
         done
