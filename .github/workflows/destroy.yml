@@ -75,7 +75,11 @@ jobs:
       run: |
           cd terraform
           cp terraform.tfstate tempstate
-          terraform state rm aws_ecs_task_definition.task
+          ECSTASKSNAMES=$(cat terraform.tfstate | jq -r '.resources[] | select(.type=="aws_ecs_task_definition").name')
+          for ECSTASKNAME in $ECSTASKSNAMES
+          do
+            terraform state rm "aws_ecs_task_definition.${ECSTASKNAME}" &>/dev/null
+          done
 
     - name: Terraform Destroy
       env:
@@ -96,7 +100,8 @@ jobs:
           IMPORTSERVICES=$(cat tempstate | jq -r '.resources[] | select(.type=="aws_ecs_task_definition").instances[].attributes.arn')
           for IMPORTSERVICE in $IMPORTSERVICES
           do
-            terraform import aws_ecs_task_definition.task "${IMPORTSERVICE}" &>/dev/null
+              TASKNAME=$(cat tempstate | jq -r --arg IMPORTSERVICE $IMPORTSERVICE '.resources[] | select(.instances[].attributes.arn==$IMPORTSERVICE).name')
+              terraform import "aws_ecs_task_definition.${TASKNAME}" "${IMPORTSERVICE}" &>/dev/null
           done
           rm -f tempstate
 
