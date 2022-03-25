@@ -34,6 +34,8 @@ jobs:
         CLUSTER_NAME: ${{ secrets.AWS_CLUSTER_NAME }}
         SECURITY_GROUP: ${{ secrets.AWS_SECURITY_GROUP }}
         REGION: ${{ secrets.AWS_REGION }}
+        AWS_SSM_ARN: ${{ secrets.AWS_SSM_ARN }}
+        AWS_SECRET_ROLE: ${{ secrets.AWS_SECRET_ROLE }}
       run: |
           envsubst < terraform/main.tf > tempsecret
           cat tempsecret > terraform/main.tf
@@ -61,7 +63,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY:  ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
           cd terraform
-          terraform apply -auto-approve &>/dev/null
+          terraform apply -auto-approve  &>/dev/null
 
     - name: Publish State
       env:
@@ -76,6 +78,8 @@ jobs:
         CLUSTER_NAME: ${{ secrets.AWS_CLUSTER_NAME }}
         APINAME: ${{ secrets.AWS_API_NAME }}
       run: |
+        cd terraform
+
         GETAPI=$(aws apigatewayv2 get-apis)
         if !(echo $GETAPI | grep -q "$APINAME"); then
           APIID=$(aws apigatewayv2 create-api --name "${APINAME}" --protocol-type HTTP | jq -r '.ApiId')
@@ -87,16 +91,18 @@ jobs:
           aws apigatewayv2 create-stage --api-id "${APIID}" --stage-name '$default' --auto-deploy &>/dev/null
         fi
 
-        SERVICE_ARNS=$(aws ecs list-services --cluster "$CLUSTER_NAME"  --query 'serviceArns[0]' --output text)
-        SERVICE_NAMES=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_ARNS" | jq -r '.services[].serviceName')
+        SERVICE_ARNS=$(aws ecs list-services --cluster "$CLUSTER_NAME"  --query 'serviceArns' | jq -r '.[]')
 
-        for SERVICE_NAME in $SERVICE_NAMES
+        for SERVICE_ARN in $SERVICE_ARNS
         do
+          SERVICE_NAME=$(aws ecs describe-services --cluster "$CLUSTER_NAME" --services "$SERVICE_ARN" | jq -r '.services[].serviceName')
           TASK_ARN=$(aws ecs list-tasks --cluster "$CLUSTER_NAME"  --service-name "$SERVICE_NAME" --query 'taskArns[0]' --output text)
-          TASK_DETAILS=$(aws ecs describe-tasks --cluster "$CLUSTER_NAME" --task "${TASK_ARN}" --query 'tasks[0].attachments[0].details')
-          ENI=$(echo $TASK_DETAILS | jq -r '.[] | select(.name=="networkInterfaceId").value')
+          TASK_DETAILS=$(aws ecs describe-tasks --cluster "$CLUSTER_NAME" --task "${TASK_ARN}" --query 'tasks[0]')
+          ENI=$(echo $TASK_DETAILS | jq -r '.attachments[0].details[] | select(.name=="networkInterfaceId").value')
           IP=$(aws ec2 describe-network-interfaces --network-interface-ids "${ENI}" --query 'NetworkInterfaces[0].Association.PublicIp' --output text)
+          TASK_DEF_ARN=$(echo $TASK_DETAILS | jq -r '.taskDefinitionArn')          
+          PORT=$(cat terraform.tfstate | jq --arg TASK_DEF_ARN $TASK_DEF_ARN -r '.resources[] | select(.instances[].attributes.arn==$TASK_DEF_ARN)' | jq '.instances[0].attributes.container_definitions | fromjson | .[].portMappings[].hostPort')
 
-          INTEGRATIONID=$(aws apigatewayv2 create-integration --api-id "${APIID}" --integration-type HTTP_PROXY --integration-uri "http://${IP}/{proxy}" --payload-format-version 1.0 --integration-method "ANY" | jq -r '.IntegrationId')
+          INTEGRATIONID=$(aws apigatewayv2 create-integration --api-id "${APIID}" --integration-type HTTP_PROXY --integration-uri "http://${IP}:${PORT}/{proxy}" --payload-format-version 1.0 --integration-method "ANY" | jq -r '.IntegrationId')
           aws apigatewayv2 create-route --api-id "${APIID}" --route-key "ANY /${SERVICE_NAME}/{proxy+}" --target "integrations/${INTEGRATIONID}" &>/dev/null
         done
