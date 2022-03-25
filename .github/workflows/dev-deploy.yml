@@ -26,8 +26,11 @@ jobs:
         S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
       run: |
         cd dev-terraform
-        aws s3 sync "${S3_BUCKET}" . --exclude "*" --include "dev-terraform.tfstate" &>/dev/null
-        mv dev-terraform.tfstate terraform.tfstate
+        aws s3 sync "${S3_BUCKET}" . &>/dev/null
+        rm -f terraform.tfstate
+        if [ -f "dev-terraform.tfstate" ]; then
+          mv "dev-terraform.tfstate" terraform.tfstate
+        fi
 
     - name: Save Secrets
       env: 
@@ -56,7 +59,7 @@ jobs:
         AWS_SECRET_ACCESS_KEY:  ${{ secrets.AWS_SECRET_ACCESS_KEY }}
       run: |
           cd dev-terraform
-          terraform apply -auto-approve  &>/dev/null
+          terraform apply -auto-approve &>/dev/null
 
     - name: Publish State
       env:
