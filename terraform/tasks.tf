@@ -1,5 +1,5 @@
-resource "aws_ecs_task_definition" "task" {
-  family = "service"
+resource "aws_ecs_task_definition" "zracni-udar-ui-task" {
+  family = "udarui"
   requires_compatibilities = [
     "FARGATE",
   ]
@@ -8,8 +8,8 @@ resource "aws_ecs_task_definition" "task" {
   memory             = 512
   container_definitions = jsonencode([
     {
-      name      = "nginx"
-      image     = "nginx:1.21.6"
+      name      = "zracni-udar-ui"
+      image     = "horvatic/zracni-udar-ui:ed46547"
       essential = true
       portMappings = [
         {
