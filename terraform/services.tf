@@ -1,7 +1,7 @@
 resource "aws_ecs_service" "service" {
-  name                  = "nginx"
+  name                  = "zracni-udar-ui"
   cluster               = aws_ecs_cluster.cluster.id
-  task_definition       = aws_ecs_task_definition.task.arn
+  task_definition       = aws_ecs_task_definition.zracni-udar-ui-task.arn
   wait_for_steady_state = true
   desired_count         = 1
 

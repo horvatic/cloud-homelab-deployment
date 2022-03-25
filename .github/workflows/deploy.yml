@@ -104,5 +104,10 @@ jobs:
           PORT=$(cat terraform.tfstate | jq --arg TASK_DEF_ARN $TASK_DEF_ARN -r '.resources[] | select(.instances[].attributes.arn==$TASK_DEF_ARN)' | jq '.instances[0].attributes.container_definitions | fromjson | .[].portMappings[].hostPort')
 
           INTEGRATIONID=$(aws apigatewayv2 create-integration --api-id "${APIID}" --integration-type HTTP_PROXY --integration-uri "http://${IP}:${PORT}/{proxy}" --payload-format-version 1.0 --integration-method "ANY" | jq -r '.IntegrationId')
-          aws apigatewayv2 create-route --api-id "${APIID}" --route-key "ANY /${SERVICE_NAME}/{proxy+}" --target "integrations/${INTEGRATIONID}" &>/dev/null
+          
+          if [ "$SERVICE_NAME" == "zracni-udar-ui" ]; then
+            aws apigatewayv2 create-route --api-id "${APIID}" --route-key "ANY /{proxy+}" --target "integrations/${INTEGRATIONID}" &>/dev/null
+          else
+            aws apigatewayv2 create-route --api-id "${APIID}" --route-key "ANY /${SERVICE_NAME}/{proxy+}" --target "integrations/${INTEGRATIONID}" &>/dev/null
+          fi
         done
