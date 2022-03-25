@@ -26,7 +26,8 @@ jobs:
         S3_BUCKET: ${{ secrets.AWS_S3_BUCKET }}
       run: |
         cd terraform
-        aws s3 sync "${S3_BUCKET}" . --exclude "*" --include "terraform.tfstate" &>/dev/null
+        aws s3 sync "${S3_BUCKET}" . &>/dev/null
+        rm -f dev-terraform.tfstate
 
     - name: Save Secrets
       env: 
