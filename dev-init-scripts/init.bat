@@ -21,7 +21,7 @@ ssh -o StrictHostKeyChecking=no -i "KEY_NAME_HERE" ubuntu@%HOST% "sudo apt-get u
 ssh -o StrictHostKeyChecking=no -i "KEY_NAME_HERE" ubuntu@%HOST% "wget https://go.dev/dl/go1.18.linux-amd64.tar.gz"
 ssh -o StrictHostKeyChecking=no -i "KEY_NAME_HERE" ubuntu@%HOST% "sudo tar -C /usr/local -xzf go1.18.linux-amd64.tar.gz"
 ssh -o StrictHostKeyChecking=no -i "KEY_NAME_HERE" ubuntu@%HOST% "sudo rm -rf go1.18.linux-amd64.tar.gz"
-ssh -o StrictHostKeyChecking=no -i "KEY_NAME_HERE" ubuntu@%HOST% "sudo sh -c 'echo ""export PATH=\$PATH:/usr/local/go/bin"" >> /home/shawn/.profile'"
+ssh -o StrictHostKeyChecking=no -i "KEY_NAME_HERE" ubuntu@%HOST% "sudo sh -c 'echo ""export PATH=\$PATH:/usr/local/go/bin"" >> /home/USER_NAME_HERE/.profile'"
 
 :: Docker
 ssh -o StrictHostKeyChecking=no -i "KEY_NAME_HERE" ubuntu@%HOST% "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg"
