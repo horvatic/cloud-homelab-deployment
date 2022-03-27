@@ -31,3 +31,6 @@ The following is already created in AWS to use this example:
 - A Subnet
 - Security group
 - A Private S3 Bucket
+
+## Dev Machine Init
+Under `dev-init-scripts` a scrpit can be ran on the host machine to setup the dev machine.
