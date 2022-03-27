@@ -1,4 +1,4 @@
-# cloud-homelab-deployment
+# Cloud Homelab Deployment
 Homelab deployment to AWS.
 
 ## Overview 
@@ -9,16 +9,22 @@ This is a working example of deploying tasks, and services to ECS (fargate). Onc
 This repo will:
 
 On Deploy:
-- Create the Cluster
+- Create a Cluster
 - Create the Tasks
 - Create the Services
 - Create API's for the Services in API Gateway
 
 On Destory:
-- Delete the Cluster
+- Delete a Cluster
 - Delete the Tasks
 - Delete the Services
 - Delete the Services API's
+
+On Dev Deploy:
+- Create a EC2 Ubuntu Machine
+
+On Dev Destory:
+- Delete a EC2 Ubuntu Machine
 
 The following is already created in AWS to use this example:
 - A VPC
