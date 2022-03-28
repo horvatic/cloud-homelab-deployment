@@ -1,6 +1,8 @@
 # Cloud Homelab Deployment
 Homelab deployment to AWS.
 
+NOTE: THIS IS NOT A PRODUCTION READY SOLUTION. THIS IS FOR DEVS / HOBBYIST TO SET UP AN ENVIRONMENT TO LEARN AND HACK (HOMELAB) ON FOR THE LOWEST COST.
+
 ## Overview 
 
 This is a working example of deploying tasks, and services to ECS (fargate). Once deploy an API is created for each service in API Gateway.
