@@ -9,7 +9,7 @@ resource "aws_ecs_task_definition" "zracni-udar-ui-task" {
   container_definitions = jsonencode([
     {
       name      = "zracni-udar-ui"
-      image     = "horvatic/zracni-udar-ui:ed46547"
+      image     = "horvatic/zracni-udar-ui:1673e20"
       essential = true
       portMappings = [
         {
@@ -33,7 +33,7 @@ resource "aws_ecs_task_definition" "zracni-udar-service-task" {
   container_definitions = jsonencode([
     {
       name      = "zracni-udar-service"
-      image     = "horvatic/zracni-udar-service:c62359b",
+      image     = "horvatic/zracni-udar-service:c3684ad",
       secrets = [
         {
           name: "MONGO_CONNECTION_STRING"
@@ -54,6 +54,10 @@ resource "aws_ecs_task_definition" "zracni-udar-service-task" {
         {
           name: "GITHUB_PAT"
           valueFrom: "${AWS_SSM_ARN}/GITHUB_PAT"
+        },
+        {
+          name: "API_KEY"
+          valueFrom: "${AWS_SSM_ARN}/API_KEY"
         },
       ]
       essential = true
